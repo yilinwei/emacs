@@ -16,8 +16,6 @@ let
       buildInputs = [ emacs mu offlineimap ];
       buildPhase = ''
         emacs --batch --eval "(byte-recompile-file \"$(pwd)/melpa-mirror-packages.el\" t 0)"
-        emacs --batch --eval "(byte-recompile-file \"$(pwd)/project+.el\" t 0)"
-        emacs --batch --eval "(byte-recompile-file \"$(pwd)/dashboard.el\" t)"
       '';
       installPhase = ''
         mkdir -p $out/share/emacs/site-lisp

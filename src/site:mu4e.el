@@ -4,15 +4,14 @@
   "Set `mu4e' variables for gmail."
   (cl-letf*
       ((prefix "/[Gmail]")
-       ((symbol-function 'set-folder)
+       ((symbol-function 'set-folder!)
 	(lambda (folder gmail-folder)
 	  (let
 	      ((sym
-		(make-symbol
+		(intern
 		 (concat "mu4e-" (symbol-name folder) "-folder"))))
-	    (setq sym
-		  (concat prefix "." (capitalize gmail-folder)))))))
-    (set-folder 'trash "trash")
-    (set-folder 'refile "archive")))
+	    (set sym (concat prefix "." (capitalize gmail-folder)))))))
+    (set-folder! 'trash "trash")
+    (set-folder! 'refile "archive")))
 
 (provide 'site:mu4e)
