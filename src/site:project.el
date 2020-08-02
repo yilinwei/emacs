@@ -7,13 +7,14 @@
   (concat user-emacs-directory ".project-bookmarks.el"))
 
 (cl-defun site:project-known-projects ()
-  "Get known projects."
+  "Get known projects from `site:project-bookmarks'."
   (with-temp-buffer
     (insert-file-contents site:project-bookmarks)
     (goto-char (point-min))
     (read (current-buffer))))
 
 (cl-defun site:project-find-file-in (filename dirs project)
+  "See `project-find-file-in'."
   (cl-letf
       (((symbol-function 'completing-read) #'ivy-completing-read))
     (project-find-file-in filename dirs project)))
@@ -30,12 +31,14 @@
     (project+-find-file-in nil (project-roots project) project)))
 
 (cl-defun site:project-find-file ()
+  "See `project-find-file'."
   (interactive)
   (cl-letf
       (((symbol-function 'completing-read) #'ivy-completing-read))
     (project-find-file)))
 
 (cl-defun site:project-start-nix-shell ()
+  "Start an `eshell' in the current project."
   (interactive)
   (let
       ((dir (car (project-roots (project-current t)))))
