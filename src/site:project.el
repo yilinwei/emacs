@@ -46,17 +46,30 @@
   (nix-eshell
    (expand-file-name (concat (site:project--current-root) "shell.nix"))))
 
-(cl-defun site:project-add-to-bookmarks ()
+(cl-defun site:project--bookmarks-write (bookmarks)
+  (with-temp-buffer
+    (prin1 bookmarks (current-buffer))
+    (write-file site:project-bookmarks)))
+
+(cl-defun site:project-bookmarks-add ()
   "Add the current project to bookmarks."
   (interactive)
   (let
-      ((p (site:project--current-root)))
-    (unless (member p (site:project-known-projects))
-      (with-temp-buffer
-	(prin1
-	 (cons p (site:project-known-projects))
-	 (current-buffer))
-	(write-file site:project-bookmarks)))))
+      ((ps (site:project-known-projects))
+       (p (site:project--current-root)))
+    (unless (member p ps)
+      (site:project--bookmarks-write
+       (cons p ps)))))
+
+(cl-defun site:project-bookmarks-remove ()
+  "Remove the current project from bookmarks."
+  (interactive)
+  (let
+      ((ps (site:project-known-projects))
+       (p (site:project--current-root)))
+    (when (member p (site:project-known-projects))
+      (site:project--bookmarks-write
+       (remove p ps)))))
 
 ;;;###autoload
 (defvar site:project-command-map

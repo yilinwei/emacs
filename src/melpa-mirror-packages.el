@@ -96,7 +96,8 @@ and `line-end-position'."
 
 (use-package dired
   :config
-  (evil-collection-dired-setup))
+  (evil-collection-dired-setup)
+  (setq dired-dwim-target t))
 
 ;; since buff-menu doesn't provide anything 
 (eval-after-load 'buff-menu
@@ -129,7 +130,13 @@ and `line-end-position'."
 (use-package racket-mode
   :interpreter "racket"
   :commands racket-run
-  :mode "\\.rkt\\'")
+  :mode "\\.rkt\\'"
+  :config
+  (use-package racket-xp
+    :commands (racket-xp-mode)
+    :config
+    (evil-define-key 'normal racket-describe-mode-map
+      (kbd "q") 'quit-window)))
 
 (use-package lispyville
   :diminish lispyville-mode
