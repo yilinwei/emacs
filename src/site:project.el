@@ -28,7 +28,7 @@
      (site:project-known-projects))))
   (let
       ((project (project--find-in-directory dir)))
-    (project+-find-file-in nil (project-roots project) project)))
+    (site:project-find-file-in nil (project-roots project) project)))
 
 (cl-defun site:project-find-file ()
   "See `project-find-file'."
@@ -37,12 +37,26 @@
       (((symbol-function 'completing-read) #'ivy-completing-read))
     (project-find-file)))
 
+(cl-defun site:project--current-root ()
+  (car (project-roots (project-current t))))
+
 (cl-defun site:project-start-nix-shell ()
   "Start an `eshell' in the current project."
   (interactive)
+  (nix-eshell
+   (expand-file-name (concat (site:project--current-root) "shell.nix"))))
+
+(cl-defun site:project-add-to-bookmarks ()
+  "Add the current project to bookmarks."
+  (interactive)
   (let
-      ((dir (car (project-roots (project-current t)))))
-    (nix-eshell (expand-file-name (concat dir "shell.nix")))))
+      ((p (site:project--current-root)))
+    (unless (member p (site:project-known-projects))
+      (with-temp-buffer
+	(prin1
+	 (cons p (site:project-known-projects))
+	 (current-buffer))
+	(write-file site:project-bookmarks)))))
 
 ;;;###autoload
 (defvar site:project-command-map
