@@ -1,7 +1,7 @@
 ;; -*- lexical-binding: t; -*-
 
 (cl-defun site:mu4e--set-gmail ()
-  "Set mu4e"
+  "Set `mu4e' variables for gmail."
   (cl-letf*
       ((prefix "/[Gmail]")
        ((symbol-function 'set-folder)

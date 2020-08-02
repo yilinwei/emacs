@@ -1,58 +1,60 @@
 ;;; -*- lexical-binding: t; -*-
 
 (require 'ivy)
+(require 'nix-shell)
 
-(cl-defun project+-known-projects ()
+(defvar site:project-bookmarks
+  (concat user-emacs-directory ".project-bookmarks.el"))
+
+(cl-defun site:project-known-projects ()
   "Get known projects."
-  (let
-      ((file (concat user-emacs-directory ".project-bookmarks.el")))
-    (with-temp-buffer
-      (insert-file-contents file)
-      (goto-char (point-min))
-      (read (current-buffer)))))
+  (with-temp-buffer
+    (insert-file-contents site:project-bookmarks)
+    (goto-char (point-min))
+    (read (current-buffer))))
 
-(cl-defun project+-find-file-in (filename dirs project)
+(cl-defun site:project-find-file-in (filename dirs project)
   (cl-letf
       (((symbol-function 'completing-read) #'ivy-completing-read))
     (project-find-file-in filename dirs project)))
 
-(cl-defun project+-switch-project (dir)
+(cl-defun site:project-switch-project (dir)
   "Switch to the project with the root DIR."
   (interactive
    (list
     (ivy-completing-read
      "Project: "
-     (project+-known-projects))))
+     (site:project-known-projects))))
   (let
       ((project (project--find-in-directory dir)))
     (project+-find-file-in nil (project-roots project) project)))
 
-(cl-defun project+-find-file ()
+(cl-defun site:project-find-file ()
   (interactive)
   (cl-letf
       (((symbol-function 'completing-read) #'ivy-completing-read))
     (project-find-file)))
 
-(cl-defun project+-start-nix-shell ()
+(cl-defun site:project-start-nix-shell ()
   (interactive)
   (let
       ((dir (car (project-roots (project-current t)))))
     (nix-eshell (expand-file-name (concat dir "shell.nix")))))
 
 ;;;###autoload
-(defvar project+-command-map
+(defvar site:project-command-map
   (let
       ((map (make-sparse-keymap)))
-    (define-key map (kbd "p") #'project+-switch-project)
-    (define-key map (kbd "f") #'project+-find-file)
-    (define-key map (kbd "s") #'project+-start-nix-shell)
+    (define-key map (kbd "p") #'site:project-switch-project)
+    (define-key map (kbd "f") #'site:project-find-file)
+    (define-key map (kbd "s") #'site:project-start-nix-shell)
     map)
   "Useful map")
 
 ;;;###autoload
 (define-minor-mode
-  project+-mode
+  site:project-mode
   "Extra functions build on top of project.el."
   :global t)
 
-(provide 'project+)
+(provide 'site:project)
