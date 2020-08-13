@@ -120,7 +120,11 @@ and `line-end-position'."
   :defines woman-manpath)
 
 (use-package nix-shell
-  :commands (nix-eshell nix-eshell-with-packages))
+  :commands (nix-eshell nix-eshell-with-packages)
+  :config
+  (progn
+    (require 'woman)
+    (require 'irony)))
 
 (use-package nix-mode
   :after nix-shell
@@ -132,11 +136,14 @@ and `line-end-position'."
   :commands racket-run
   :mode "\\.rkt\\'"
   :config
-  (use-package racket-xp
-    :commands (racket-xp-mode)
-    :config
-    (evil-define-key 'normal racket-describe-mode-map
-      (kbd "q") 'quit-window)))
+  (progn
+    (evil-define-key 'normal racket-mode-map
+      (kbd "C-c c r") 'racket-run)
+    (use-package racket-xp
+      :commands (racket-xp-mode)
+      :config
+      (evil-define-key 'normal racket-describe-mode-map
+	(kbd "q") 'quit-window))))
 
 (use-package lispyville
   :diminish lispyville-mode
@@ -144,12 +151,21 @@ and `line-end-position'."
   :config (lispyville-set-key-theme
 	   '(operators
 	     c-w
+	     wrap
+	     mark
+	     additional
 	     text-objects
 	     atom-motions
 	     slurp/barf-lispy))
   :hook
   ((emacs-lisp-mode . lispyville-mode)
-   (racket-mode . lispyville-mode)))
+   (racket-mode . lispyville-mode))
+  :config
+  (progn
+    (evil-define-key 'visual lispyville-mode-map
+      (kbd "C-c c c") 'lispyville-comment-or-uncomment)
+    (evil-define-key 'normal lispyville-mode-map
+      (kbd "C-c c c") 'lispyville-comment-or-uncomment-line)))
 
 (use-package avy
   :bind
@@ -167,15 +183,23 @@ and `line-end-position'."
 ;;   :diminish undo-tree-mode
 ;;   :commands (undo-tree-mode))
 
+(use-package haskell-mode
+  :mode ("\\.hs\\'" . haskell-mode)
+  :bind
+  (:map haskell-mode-map
+	("C-c c b" . haskell-compile)))
+
 (use-package org
   :bind
   ("C-c o l" . org-store-link)
   ("C-c o t" . org-clock-goto)
-
   :config
-  (setq org-todo-keywords
-	'((sequence "TODO" "FEEDBACK" "|" "DONE" "DELEGATED")
-	  (sequence "CANCELED"))))
+  (progn
+    (setq org-todo-keywords
+	  '((sequence "TODO" "FEEDBACK" "|" "DONE" "DELEGATED")
+	    (sequence "CANCELED")))
+    (use-package org-indent
+      :hook (org-indent-mode . org-mode))))
 
 (defun company--set-mode-backends (mode-hook backends)
   "Set company BACKENDS for MODE-HOOK."
@@ -218,6 +242,9 @@ and `line-end-position'."
   :hook
   ((emacs-lisp-mode . company-mode)
    (anaconda-mode . company-mode)))
+
+(use-package typescript-mode
+  :mode "\\.ts\\'")
 
 ;;TODO: get this building better
 (use-package mu4e
