@@ -5,6 +5,22 @@
 
 (require 'use-package)
 
+;; TODO: as
+
+(defgroup site nil "Group for site customization.")
+
+(defface site:font-lock-todo-face
+  '((default . (:inherit font-lock-comment-face
+			 :underline t)))
+  "TODO face."
+  :group 'site)
+
+(defconst site:lisp-todo-keyword
+  '(";;\\(TODO\\):" 1 'site:font-lock-todo-face prepend))
+
+(font-lock-add-keywords 'emacs-lisp-mode
+			    `(,site:lisp-todo-keyword))
+
 (setq use-package-verbose t)
 
 (use-package diminish
@@ -93,6 +109,7 @@ and `line-end-position'."
 ;;; Customize emacs-lisp
 (add-hook 'emacs-lisp-mode-hook 'electric-pair-mode)
 (add-hook 'emacs-lisp-mode-hook 'code-mode)
+(add-hook 'emacs-lisp-mode-hook 'show-paren-mode)
 
 (use-package dired
   :config
@@ -137,6 +154,8 @@ and `line-end-position'."
   :mode "\\.rkt\\'"
   :config
   (progn
+    (font-lock-add-keywords 'racket-mode
+			    `(,site:lisp-todo-keyword))
     (evil-define-key 'normal racket-mode-map
       (kbd "C-c c r") 'racket-run)
     (use-package racket-xp
@@ -254,5 +273,10 @@ and `line-end-position'."
     (evil-collection-mu4e-setup)
     (setq mu4e-completing-read-function 'ivy-completing-read)
     (setq mail-user-agent 'mu4e-user-agent)))
+
+(use-package rainbow-delimiters
+  :hook
+  ((emacs-lisp-mode . rainbow-delimiters-mode)
+   (racket-mode . rainbow-delimiters-mode)))
 
 (provide 'melpa-mirror-packages)

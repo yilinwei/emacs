@@ -1,19 +1,26 @@
 {
   nixpkgs ? import <nixpkgs> {
     overlays = [
-      (import (builtins.fetchTarball {
-        url = https://github.com/nix-community/emacs-overlay/archive/master.tar.gz;
+      (import (builtins.fetchGit {
+        url = "https://github.com/nix-community/emacs-overlay.git";
+        rev = "ef220b4a0990fd0f5dd25c588c24b2c1ad88c8fc";
+        ref = "master";
       }))
     ];
   }
 }:
 let
   inherit (nixpkgs) pkgs;
-  site = with pkgs;
+  emacsWithPackages = with pkgs;
+    emacsWithPackagesFromUsePackage {
+      config = builtins.readFile ./src/melpa-mirror-packages.el;
+      alwaysEnsure = true;
+    };
+  site-lisp = with pkgs;
     stdenv.mkDerivation {
-      name = "emacs-site";
+      name = "site-lisp";
       src = lib.cleanSource ./src;
-      buildInputs = [ emacs mu offlineimap ];
+      buildInputs = [ emacsWithPackages mu offlineimap ];
       buildPhase = ''
         emacs --batch --eval "(byte-recompile-file \"$(pwd)/melpa-mirror-packages.el\" t 0)"
       '';
@@ -22,20 +29,7 @@ let
         cp -r . $out/share/emacs/site-lisp/
       '';
     };
-  emacs = with pkgs;
-    emacsWithPackagesFromUsePackage {
-      config = builtins.readFile ./src/melpa-mirror-packages.el;
-      alwaysEnsure = true;
-    };
-  run-emacs = with pkgs;
-    writeScriptBin "run-emacs"
-      ''
-        #!${stdenv.shell}
-        export FONTCONFIG_FILE=${fontconfig.out}/etc/fonts/fonts.conf
-        ${emacs.out}/bin/emacs
-      '';
-in {
-  inherit site;
-  inherit emacs;
-  inherit run-emacs;
+in pkgs.symlinkJoin {
+  name = "emacs-site-lisp";
+  paths = [ emacsWithPackages site-lisp ];
 }
