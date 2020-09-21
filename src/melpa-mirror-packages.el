@@ -5,6 +5,9 @@
 
 (require 'use-package)
 
+(use-package dash
+  :defines (-repeat))
+
 ;; TODO: as
 
 (defgroup site nil "Group for site customization.")
@@ -16,7 +19,7 @@
   :group 'site)
 
 (defconst site:lisp-todo-keyword
-  '(";;\\(TODO\\):" 1 'site:font-lock-todo-face prepend))
+  '(";; \\(TODO\\):" 1 'site:font-lock-todo-face prepend))
 
 (font-lock-add-keywords 'emacs-lisp-mode
 			    `(,site:lisp-todo-keyword))
@@ -158,6 +161,8 @@ and `line-end-position'."
 			    `(,site:lisp-todo-keyword))
     (evil-define-key 'normal racket-mode-map
       (kbd "C-c c r") 'racket-run)
+    (add-hook 'racket-mode-hook 'code-mode)
+    (add-hook 'racket-mode-hook 'show-paren-mode)
     (use-package racket-xp
       :commands (racket-xp-mode)
       :config
@@ -217,8 +222,25 @@ and `line-end-position'."
     (setq org-todo-keywords
 	  '((sequence "TODO" "FEEDBACK" "|" "DONE" "DELEGATED")
 	    (sequence "CANCELED")))
-    (use-package org-indent
-      :hook (org-indent-mode . org-mode))))
+    (use-package org-variable-pitch
+      :hook ((org-mode . org-variable-pitch-minor-mode))
+      :config
+      (progn
+	(setq org-variable-pitch-fixed-faces
+	      (append
+	       '(org-superstar-leading)
+	       (-reject
+		(lambda (%) (memq %
+				  '(org-special-keyword org-todo org-done org-indent)))
+		(default-value 'org-variable-pitch-fixed-faces))))))
+    (use-package org-superstar
+      :hook ((org-mode . org-superstar-mode))
+      :config
+      (progn
+	(setq org-superstar-headline-bullets-list
+	      (-repeat 5
+		       ;; Zero-width space
+		       65279))))))
 
 (defun company--set-mode-backends (mode-hook backends)
   "Set company BACKENDS for MODE-HOOK."
@@ -260,7 +282,8 @@ and `line-end-position'."
     (company--set-mode-backends 'anaconda-mode-hook '(company-anaconda)))
   :hook
   ((emacs-lisp-mode . company-mode)
-   (anaconda-mode . company-mode)))
+   (anaconda-mode . company-mode)
+   (racket-xp-mode . company-mode)))
 
 (use-package typescript-mode
   :mode "\\.ts\\'")
