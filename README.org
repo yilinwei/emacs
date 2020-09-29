@@ -43,3 +43,8 @@ we care about.
 
  - Always use direnv mode for per project command line tools (compilers, build tools,
    etc...). Most frustrating are tools like ~agda.el~
+
+* Yasnippets
+  The listed snippets are taken from [[https://github.com/AndreaCrotti/yasnippet-snippets/tree/master/snippets/python-mode][yasnippet-snippets]] 
+** ~python-mode~
+ * function

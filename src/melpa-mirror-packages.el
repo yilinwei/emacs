@@ -6,11 +6,26 @@
 (require 'use-package)
 
 (use-package dash
-  :defines (-repeat))
+  :functions (-repeat -reject))
 
 ;; TODO: as
 
-(defgroup site nil "Group for site customization.")
+(defun lispy-brackets-switch ()
+  (interactive)
+  (save-excursion
+    (thing-at-point--beginning-of-sexp)
+    (let*
+	((lb (char-before))
+	 (is-round (char-equal ?\( lb)))
+      (delete-char -1)
+      (insert (if is-round ?\[ ?\())
+      (thing-at-point--end-of-sexp)
+      (delete-char 1)
+      (insert (if is-round ?\] ?\))))))
+
+(defgroup site
+  nil
+  "Group for site customization.")
 
 (defface site:font-lock-todo-face
   '((default . (:inherit font-lock-comment-face
@@ -151,12 +166,18 @@ and `line-end-position'."
   :commands (nix-repl nix-shell)
   :mode "\\.nix\\'")
 
+(use-package rackunit
+  :commands (rackunit-test))
+
 (use-package racket-mode
   :interpreter "racket"
   :commands racket-run
   :mode "\\.rkt\\'"
+  :bind (("C-c c t" . rackunit-test))
   :config
   (progn
+    (evil-define-key 'normal racket-describe-mode-map
+      (kbd "q") 'quit-window)
     (font-lock-add-keywords 'racket-mode
 			    `(,site:lisp-todo-keyword))
     (evil-define-key 'normal racket-mode-map
@@ -165,9 +186,10 @@ and `line-end-position'."
     (add-hook 'racket-mode-hook 'show-paren-mode)
     (use-package racket-xp
       :commands (racket-xp-mode)
-      :config
-      (evil-define-key 'normal racket-describe-mode-map
-	(kbd "q") 'quit-window))))
+      :hook ((racket-mode . racket-xp-mode))
+      :bind (("C-c r r" . 'racket-send-region)
+	     ("C-c r d" . 'racket-send-definition)
+	     ("C-c r s" . 'racket-send-last-sexp)))))
 
 (use-package lispyville
   :diminish lispyville-mode
@@ -203,6 +225,22 @@ and `line-end-position'."
    ("j" . org-agenda-previous-line)
    ("k" . org-agenda-next-line)))
 
+(use-package yasnippet
+  :commands (yas-minor-mode yas-reload-all)
+  :hook
+  ((python-mode . yas-minor-mode)
+   (racket-mode . yas-minor-mode))
+  :bind
+  :config
+  (progn
+   (yas-reload-all)
+   (use-package ivy-yasnippet
+     :after (ivy yasnippet)
+     :commands (ivy-yasnippet)
+     :bind
+     (:map yas-minor-mode-map
+	   ("C-M-j" . ivy-yasnippet)))))
+
 ;; (use-package undo-tree
 ;;   :diminish undo-tree-mode
 ;;   :commands (undo-tree-mode))
@@ -221,12 +259,16 @@ and `line-end-position'."
   (progn
     (setq org-todo-keywords
 	  '((sequence "TODO" "FEEDBACK" "|" "DONE" "DELEGATED")
-	    (sequence "CANCELED")))
+	    (sequence "CANCELED"))
+	  org-pretty-entities t)
     (use-package org-variable-pitch
+      :diminish (org-variable-pitch-minor-mode)
       :hook ((org-mode . org-variable-pitch-minor-mode))
       :config
       (progn
-	(setq org-variable-pitch-fixed-faces
+	(setq org-hide-emphasis-markers t
+	      org-hide-leading-stars t
+	      org-variable-pitch-fixed-faces
 	      (append
 	       '(org-superstar-leading)
 	       (-reject
@@ -272,6 +314,7 @@ and `line-end-position'."
   (add-hook 'scala-mode-hook 'code-mode))
 
 (use-package company
+  :defines (company-backends)
   :diminish company-mode
   :bind
   ((:map code-mode-map

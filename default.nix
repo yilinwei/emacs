@@ -20,7 +20,7 @@ let
     stdenv.mkDerivation {
       name = "site-lisp";
       src = lib.cleanSource ./src;
-      buildInputs = [ emacsWithPackages mu offlineimap ];
+      buildInputs = [ emacsWithPackages ];
       buildPhase = ''
         emacs --batch --eval "(byte-recompile-file \"$(pwd)/melpa-mirror-packages.el\" t 0)"
       '';
