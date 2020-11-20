@@ -6,9 +6,59 @@
 (require 'use-package)
 
 (use-package dash
-  :functions (-repeat -reject))
+  :functions (-repeat -reject --mapcat -split-at))
 
-;; TODO: as
+(use-package s
+  :functions (s-concat))
+
+(defun racket-search (text)
+  (interactive "M")
+  (let*
+      ((buf (with-current-buffer (get-buffer-create "*racket-search*")
+	      (erase-buffer)
+	      (current-buffer)))
+       (filter (lambda (_ str)
+		 (let
+		     ((es
+		       (--map
+			(with-temp-buffer
+			  (insert it)
+			  (goto-char (point-min))
+			  (read (current-buffer)))
+			(--filter
+			 (not (s-blank? it))
+			 (s-split "\n" str)))))
+		   (cl-loop
+		    for e in es
+		    do (pcase e
+			 (`(,txt ,mods ,link)
+			  (widget-insert txt)
+			  (insert "\t")
+			  (widget-insert (s-join ", " mods))
+			  (insert "\t")
+			  (widget-create 'push-button
+					 :notify (lambda (&rest ignore)
+						   (browse-url
+						    (s-prepend
+						     "file://"
+						     link)))
+					 "Documentation")
+			  (newline)))))))
+       (proc (make-process
+		 :name "raco"
+		 :buffer buf
+		 :sentinel #'ignore
+		 :command (list "raco" "search" text)
+		 :filter filter)))
+    (set-process-filter proc filter)
+    (switch-to-buffer buf)))
+
+(defun comment-or-uncomment-line ()
+  "Call `comment-or-uncomment-region' with `line-beginning-position' 
+and `line-end-position'."
+  (interactive)
+  (comment-or-uncomment-region
+   (line-beginning-position) (line-end-position)))
 
 (defun lispy-brackets-switch ()
   (interactive)
@@ -27,17 +77,16 @@
   nil
   "Group for site customization.")
 
-(defface site:font-lock-todo-face
+(defface font-lock-todo-face
   '((default . (:inherit font-lock-comment-face
 			 :underline t)))
-  "TODO face."
-  :group 'site)
+  "TODO face.")
 
-(defconst site:lisp-todo-keyword
-  '(";; \\(TODO\\):" 1 'site:font-lock-todo-face prepend))
+(defconst lisp-todo-keyword
+  '(";; \\(TODO\\):" 1 'font-lock-todo-face prepend))
 
 (font-lock-add-keywords 'emacs-lisp-mode
-			    `(,site:lisp-todo-keyword))
+			`(,lisp-todo-keyword))
 
 (setq use-package-verbose t)
 
@@ -64,6 +113,34 @@
    evil-collection-magit-setup
    evil-collection-buff-menu-setup
    evil-collection-proced-setup))
+
+(defmacro evil-define-key/prefix
+    (state keymap prefix key def &rest bindings)
+  (let* ((step 2)
+	 (pairs (cons
+		 (list key def)
+		 (-partition-all-in-steps step step bindings)))
+	 (body
+	 (--mapcat
+	  `((kbd ,(s-concat prefix " " (car it))) ,(cadr it))
+	  pairs)))
+    `(evil-define-key ,state ,keymap
+       ,@body)))
+
+
+(define-minor-mode code-mode
+  "Common bindings for coding.
+\\{code-mode-map}"
+  :keymap (make-sparse-keymap)
+  (display-line-numbers-mode))
+
+(evil-define-key/prefix 'normal code-mode-map "C-c c"
+			"c" 'comment-or-uncomment-line)
+
+(evil-define-key/prefix 'visual code-mode-map "C-c c"
+			"c" 'comment-or-uncomment-region)
+
+
 
 (use-package ivy
   :diminish ivy-mode
@@ -103,26 +180,6 @@
   :after (magit evil))
 
 (use-package direnv)
-
-;;; Helper functions
-(defun comment-or-uncomment-line ()
-  "Call `comment-or-uncomment-region' with `line-beginning-position' 
-and `line-end-position'."
-  (interactive)
-  (comment-or-uncomment-region
-   (line-beginning-position) (line-end-position)))
-
-(define-minor-mode code-mode
-  "Common bindings for coding.
-\\{code-mode-map}"
-  :keymap (make-sparse-keymap)
-  (display-line-numbers-mode))
-
-(evil-define-key 'normal code-mode-map
-  (kbd "C-c c c") 'comment-or-uncomment-line)
-
-(evil-define-key 'visual code-mode-map
-  (kbd "C-c c c") 'comment-or-uncomment-region)
 
 ;;; Customize emacs-lisp
 (add-hook 'emacs-lisp-mode-hook 'electric-pair-mode)
@@ -179,7 +236,7 @@ and `line-end-position'."
     (evil-define-key 'normal racket-describe-mode-map
       (kbd "q") 'quit-window)
     (font-lock-add-keywords 'racket-mode
-			    `(,site:lisp-todo-keyword))
+			    `(,lisp-todo-keyword))
     (evil-define-key 'normal racket-mode-map
       (kbd "C-c c r") 'racket-run)
     (add-hook 'racket-mode-hook 'code-mode)
@@ -240,6 +297,7 @@ and `line-end-position'."
      :bind
      (:map yas-minor-mode-map
 	   ("C-M-j" . ivy-yasnippet)))))
+
 
 ;; (use-package undo-tree
 ;;   :diminish undo-tree-mode
@@ -328,6 +386,23 @@ and `line-end-position'."
    (anaconda-mode . company-mode)
    (racket-xp-mode . company-mode)))
 
+(use-package rust-mode
+  :mode "\\.rs\\'"
+  :config
+  (progn
+    (add-hook 'rust-mode-hook 'code-mode)
+    (add-hook 'rust-mode-hook 'electric-pair-mode)))
+
+(use-package cargo
+  :commands (cargo-process-check)
+  :hook
+  ((rust-mode . cargo-minor-mode))
+  :config
+  (progn
+    (evil-define-key/prefix 'normal cargo-minor-mode-map "C-c c"
+			    "b" 'cargo-process-check
+			    "t" 'cargo-process-test)))
+
 (use-package typescript-mode
   :mode "\\.ts\\'")
 
@@ -339,6 +414,8 @@ and `line-end-position'."
     (evil-collection-mu4e-setup)
     (setq mu4e-completing-read-function 'ivy-completing-read)
     (setq mail-user-agent 'mu4e-user-agent)))
+
+(use-package elpher)
 
 (use-package rainbow-delimiters
   :hook
