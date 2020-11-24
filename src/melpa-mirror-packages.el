@@ -223,14 +223,11 @@ and `line-end-position'."
   :commands (nix-repl nix-shell)
   :mode "\\.nix\\'")
 
-(use-package rackunit
-  :commands (rackunit-test))
-
 (use-package racket-mode
   :interpreter "racket"
   :commands racket-run
   :mode "\\.rkt\\'"
-  :bind (("C-c c t" . rackunit-test))
+  :bind (("C-c c t" . racket-test))
   :config
   (progn
     (evil-define-key 'normal racket-describe-mode-map
@@ -246,7 +243,11 @@ and `line-end-position'."
       :hook ((racket-mode . racket-xp-mode))
       :bind (("C-c r r" . 'racket-send-region)
 	     ("C-c r d" . 'racket-send-definition)
-	     ("C-c r s" . 'racket-send-last-sexp)))))
+	     ("C-c r s" . 'racket-send-last-sexp))
+      :config
+      (progn
+	(evil-define-key 'normal racket-xp-mode-map
+	  (kbd "gd") 'racket-xp-visit-definition)))))
 
 (use-package lispyville
   :diminish lispyville-mode
