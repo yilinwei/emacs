@@ -19,7 +19,7 @@ let
         racket-mode = epkgs.melpaPackages.racket-mode.overrideAttrs(old: {
           src = (builtins.fetchGit {
             url = "https://github.com/yilinwei/racket-mode.git";
-            rev = "c33d4de97d90310e086ba63492ddcae700e067b1";
+            rev = "060146d2102df647825e26c99d31c0324a645946";
             ref = "master";
           });
         });

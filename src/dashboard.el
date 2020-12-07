@@ -3,7 +3,7 @@
 ;;; Code:
 
 (require 'widget)
-(require 'site:project)
+(require 'project+)
 
 ;; (require 'use-package)
 
@@ -18,9 +18,9 @@
   (widget-insert "Projects: \n\n")
   (cl-flet
       ((open (widget &rest ignore)
-	     (site:project-switch-project (widget-value widget))))
+	     (project-switch-project (widget-value widget))))
       (cl-loop
-       for project in (site:project-known-projects)
+       for project in (project-known-projects)
        do
        (widget-create 'push-button :notify #'open project)
        (widget-insert "\n"))))

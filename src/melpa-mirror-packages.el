@@ -11,48 +11,6 @@
 (use-package s
   :functions (s-concat))
 
-(defun racket-search (text)
-  (interactive "M")
-  (let*
-      ((buf (with-current-buffer (get-buffer-create "*racket-search*")
-	      (erase-buffer)
-	      (current-buffer)))
-       (filter (lambda (_ str)
-		 (let
-		     ((es
-		       (--map
-			(with-temp-buffer
-			  (insert it)
-			  (goto-char (point-min))
-			  (read (current-buffer)))
-			(--filter
-			 (not (s-blank? it))
-			 (s-split "\n" str)))))
-		   (cl-loop
-		    for e in es
-		    do (pcase e
-			 (`(,txt ,mods ,link)
-			  (widget-insert txt)
-			  (insert "\t")
-			  (widget-insert (s-join ", " mods))
-			  (insert "\t")
-			  (widget-create 'push-button
-					 :notify (lambda (&rest ignore)
-						   (browse-url
-						    (s-prepend
-						     "file://"
-						     link)))
-					 "Documentation")
-			  (newline)))))))
-       (proc (make-process
-		 :name "raco"
-		 :buffer buf
-		 :sentinel #'ignore
-		 :command (list "raco" "search" text)
-		 :filter filter)))
-    (set-process-filter proc filter)
-    (switch-to-buffer buf)))
-
 (defun comment-or-uncomment-line ()
   "Call `comment-or-uncomment-region' with `line-beginning-position' 
 and `line-end-position'."
@@ -103,7 +61,9 @@ and `line-end-position'."
   :init (setq
 	 evil-want-C-u-scroll t
 	 evil-want-integration t
-	 evil-want-keybinding nil))
+	 evil-want-keybinding nil)
+  :bind
+  ("C-SPC" . universal-argument))
 
 (use-package evil-collection
   :after evil
@@ -127,6 +87,11 @@ and `line-end-position'."
     `(evil-define-key ,state ,keymap
        ,@body)))
 
+(use-package evil-surround
+  :commands global-evil-surround-mode
+  :after evil
+  :config
+  (global-evil-surround-mode 1))
 
 (define-minor-mode code-mode
   "Common bindings for coding.
@@ -146,9 +111,10 @@ and `line-end-position'."
   :diminish ivy-mode
   :commands (ivy-completing-read)
   :config
-  (setq ivy-use-virtual-buffers t)
-  (setq enable-recursive-minibuffers t)
-  (setq ivy-count-format "(%d/%d) ")
+  (setq ivy-use-virtual-buffers t
+	enable-recursive-minibuffers t
+	ivy-count-format "(%d/%d) "
+	completing-read-function #'ivy-completing-read)
   :bind
   ("C-c C-r" . 'ivy-resume)
   :hook
@@ -156,16 +122,22 @@ and `line-end-position'."
 
 (use-package counsel
   :after ivy
-  :bind
-  (("\C-s" . 'counsel-grep-or-swiper)
-   ("C-x C-f" . 'counsel-find-file)
-   ("C-h f" . 'counsel-describe-function)
-   ("C-h v" . 'counsel-describe-variable)
-   ("C-h l" . 'counsel-find-library)
-   ("C-x d" . 'counsel-dired)
-   ("M-i" . 'counsel-imenu)
-   ("M-x" . 'counsel-M-x)
-   ("C-x b" . 'counsel-switch-buffer)))
+  :config
+  (progn
+    (evil-define-key/prefix 'normal 'global "C-h"
+			    "f" 'counsel-describe-function
+			    "v" 'counsel-describe-variable
+			    "l" 'counsel-find-library)
+    (evil-define-key/prefix 'normal 'global "C-x"
+			    "C-f" 'counsel-find-file
+			    "d" 'counsel-dired
+			    "b" 'counsel-switch-buffer)
+    (evil-define-key 'normal 'global
+      (kbd "C-M-i") 'counsel-imenu)
+    (evil-define-key 'normal 'global
+      (kbd "C-s") 'counsel-grep-or-swiper)
+    (evil-define-key 'normal 'global
+      (kbd "M-x") 'counsel-M-x)))
 
 (use-package swiper
   :after ivy)
@@ -205,23 +177,29 @@ and `line-end-position'."
 
 (use-package ffap
   :commands (ffap)
-  :defines ffap-c-path)
+  :bind
+  ("C-x C-f" . ffap))
 
 (use-package woman
-  :commands (woman)
-  :defines woman-manpath)
+   :commands (woman)
+   :defines woman-manpath)
 
 (use-package nix-shell
-  :commands (nix-eshell nix-eshell-with-packages)
+  :commands (nix-eshell
+	     nix-eshell-with-packages)
   :config
   (progn
     (require 'woman)
-    (require 'irony)))
+    (require 'irony)
+    (require 'ffap)))
 
 (use-package nix-mode
   :after nix-shell
   :commands (nix-repl nix-shell)
   :mode "\\.nix\\'")
+
+(use-package yaml-mode
+  :mode "\\.yml\\'")
 
 (use-package racket-mode
   :interpreter "racket"
@@ -238,6 +216,7 @@ and `line-end-position'."
       (kbd "C-c c r") 'racket-run)
     (add-hook 'racket-mode-hook 'code-mode)
     (add-hook 'racket-mode-hook 'show-paren-mode)
+    (add-hook 'racket-mode-hook 'whitespace-cleanup)
     (use-package racket-xp
       :commands (racket-xp-mode)
       :hook ((racket-mode . racket-xp-mode))
@@ -249,21 +228,39 @@ and `line-end-position'."
 	(evil-define-key 'normal racket-xp-mode-map
 	  (kbd "gd") 'racket-xp-visit-definition)))))
 
+(use-package lispy
+  :defer t
+  :config
+  (progn
+    (add-to-list
+     'lispy-colon-no-space-regex
+     '((racket-mode . "."))))
+  :hook
+  ((emacs-lisp-mode . lispy-mode)
+   (racket-mode . lispy-mode)))
+
 (use-package lispyville
   :diminish lispyville-mode
   :commands lispyville-set-key-theme
-  :config (lispyville-set-key-theme
-	   '(operators
-	     c-w
-	     wrap
-	     mark
-	     additional
-	     text-objects
-	     atom-motions
-	     slurp/barf-lispy))
+  :config (progn
+	    (lispyville-set-key-theme
+	     '(operators
+	       c-w
+	       escape
+	       mark-toggle
+	       c-u
+	       prettify
+	       wrap
+	       additional
+	       additional-insert
+	       additional-motions
+	       text-objects
+	       atom-motions
+	       slurp/barf-lispy))
+	    (setq lispyville-motions-put-into-special t)
+	    (lispy-define-key lispy-mode-map "v" #'lispyville-toggle-mark-type))
   :hook
-  ((emacs-lisp-mode . lispyville-mode)
-   (racket-mode . lispyville-mode))
+  ((lispy-mode . lispyville-mode))
   :config
   (progn
     (evil-define-key 'visual lispyville-mode-map
@@ -280,25 +277,32 @@ and `line-end-position'."
   :bind
   (("C-c o a" . org-agenda)
    :map org-agenda-mode-map
-   ("j" . org-agenda-previous-line)
-   ("k" . org-agenda-next-line)))
+   ("j" . org-agenda-next-line)
+   ("k" . org-agenda-previous-line)))
 
 (use-package yasnippet
-  :commands (yas-minor-mode yas-reload-all)
+  :commands (yas-minor-mode yas-reload-all yas-expand)
   :hook
   ((python-mode . yas-minor-mode)
    (racket-mode . yas-minor-mode))
   :bind
+  (:map yas-minor-mode-map
+	("C-M-j" . yas-expand/evil)
+	("TAB" . nil))
   :config
-  (progn
-   (yas-reload-all)
-   (use-package ivy-yasnippet
-     :after (ivy yasnippet)
-     :commands (ivy-yasnippet)
-     :bind
-     (:map yas-minor-mode-map
-	   ("C-M-j" . ivy-yasnippet)))))
+  (yas-reload-all))
 
+(defun yas-expand/evil (&rest args)
+  "Expand in insert-mode. See `yas-expand'."
+  (interactive)
+  (cond
+   ((or (evil-visual-state-p)
+	(lispyville--lispy-keybindings-active-p))
+    (progn
+      (evil-insert 0)
+      (apply #'yas-insert-snippet args)))
+   ((evil-insert-state-p)
+    (apply #'yas-expand args))))
 
 ;; (use-package undo-tree
 ;;   :diminish undo-tree-mode
@@ -310,10 +314,16 @@ and `line-end-position'."
   (:map haskell-mode-map
 	("C-c c b" . haskell-compile)))
 
+(remove-hook 'kill-emacs-hook #'org-clock-out)
+
 (use-package org
+  :commands (org-clock-in-last
+	     org-clock-out)
   :bind
   ("C-c o l" . org-store-link)
   ("C-c o t" . org-clock-goto)
+  :hook ((kill-emacs . (lambda ()
+			 (org-clock-out nil t))))
   :config
   (progn
     (setq org-todo-keywords
@@ -367,6 +377,9 @@ and `line-end-position'."
   :commands (company-anaconda)
   :after (anaconda-mode company-mode))
 
+(use-package sbt-mode
+  :commands sbt-start sbt-command)
+
 (use-package scala-mode
   :mode "\\.scala\\'"
   :config
@@ -374,10 +387,12 @@ and `line-end-position'."
 
 (use-package company
   :defines (company-backends)
+  :commands (company-complete) 
   :diminish company-mode
-  :bind
-  ((:map code-mode-map
-	 ("C-M-i" . company-complete)))
+  :config
+  (progn
+    (evil-define-key 'insert code-mode-map
+      (kbd "C-M-i") . 'company-complete))
   :init
   (progn
     (company--set-mode-backends 'emacs-lisp-mode-hook '(company-capf company-files))
