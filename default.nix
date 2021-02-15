@@ -11,34 +11,16 @@
 }:
 let
   inherit (nixpkgs) pkgs;
-  emacsWithPackages = with pkgs;
-    emacsWithPackagesFromUsePackage {
-      config = builtins.readFile ./src/melpa-mirror-packages.el;
-      alwaysEnsure = true;
-      override = epkgs: epkgs // {
-        racket-mode = epkgs.melpaPackages.racket-mode.overrideAttrs(old: {
-          src = (builtins.fetchGit {
-            url = "https://github.com/yilinwei/racket-mode.git";
-            rev = "060146d2102df647825e26c99d31c0324a645946";
-            ref = "master";
-          });
-        });
+  localPackage = pkgs.callPackage ./builder.nix;
+in with pkgs;
+  emacsWithPackagesFromUsePackage {
+    config = builtins.readFile ./src/remote-packages.el;
+    alwaysEnsure = true;
+    override = epkgs: epkgs // {
+      fandango = localPackage {
+        name = "emacs-fandango";
+        src = ./fandango;
+        buildInputs = with epkgs; [ dash s evil ];
       };
     };
-  site-lisp = with pkgs;
-    stdenv.mkDerivation {
-      name = "site-lisp";
-      src = lib.cleanSource ./src;
-      buildInputs = [ emacsWithPackages ];
-      buildPhase = ''
-        emacs --batch --eval "(byte-recompile-file \"$(pwd)/melpa-mirror-packages.el\" t 0)"
-      '';
-      installPhase = ''
-        mkdir -p $out/share/emacs/site-lisp
-        cp -r . $out/share/emacs/site-lisp/
-      '';
-    };
-in pkgs.symlinkJoin {
-  name = "emacs-site-lisp";
-  paths = [ emacsWithPackages site-lisp ];
-}
+  }

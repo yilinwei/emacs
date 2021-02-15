@@ -1,0 +1,3 @@
+[submodule "fandango"]
+	path = fandango
+	url = git@git.sr.ht:~yilin/fandango
