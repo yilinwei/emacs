@@ -14,7 +14,7 @@ let
   localPackage = pkgs.callPackage ./builder.nix;
 in with pkgs;
   emacsWithPackagesFromUsePackage {
-    config = builtins.readFile ./src/remote-packages.el;
+    config = builtins.readFile ./src/site-packages.el;
     alwaysEnsure = true;
     override = epkgs: epkgs // {
       fandango = localPackage {
